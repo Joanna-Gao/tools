@@ -23,10 +23,10 @@
 
 //Definitions
 #define PI 3.141592654
-#define GridX 20350
-#define GridY 10000
-#define GridXBin 40
-#define GridYBin 20
+#define GridX 20350 // This is the half-width of the grid which will divide the unfolded cylinder 
+#define GridY 10000 // This is the half-length of the grid which will divide the unfolded cylinder
+#define GridXBin 40 // The number of bins in the horizontal
+#define GridYBin 20 // The number of bins in the vertical
 /*
 *How to run:
 *
@@ -39,7 +39,7 @@ typedef struct {
   double charge;
   double id;
 } pmt;
-
+// a structure to hold the details of each grid point
 typedef struct {
   double charge;
   int xbin;
@@ -50,12 +50,12 @@ typedef struct {
   double totCharge;
 } section;
 
-// a function to be used to sort pmt charges
+// a function to be used to sort pmt charges using pmt structures
 bool CompPMT(pmt a, pmt b)
 {
   return a.charge > b.charge;
 }
-// a function to be used to sort pmt charges
+// a function to be used to sort pmt charges using section structures
 bool CompSection(section a, section b)
 {
   return a.charge > b.charge;
@@ -69,6 +69,7 @@ double RadToDeg(double x){
 double DegToRad(double x){
   return x*PI/180;
 }
+// Print the details of a pmt to the console
 void PrintPMT(int pmt_ID1, WCSimRootGeom *geo){
 
   if (pmt_ID1 <0) exit(1);
@@ -84,6 +85,7 @@ void PrintPMT(int pmt_ID1, WCSimRootGeom *geo){
     std::cout << "z: " << pmt1_z << std::endl;
 
 }
+// Get the distance between two PMTs
 double GetDistance(int pmt_ID1, int pmt_ID2, WCSimRootGeom *geo){
 
   double distance;
@@ -110,6 +112,7 @@ double GetDistance(int pmt_ID1, int pmt_ID2, WCSimRootGeom *geo){
 
   return distance;
 }
+// Check if a PMT is within a range of PMT ID numbers, if so, return true.
 bool checkPMT(int pmt, int low, int high) {
 
 	if (pmt >= low && pmt <= high) return true;
@@ -149,7 +152,7 @@ void Reorder(double charges[3], double ids[3]){
 
 }
 
-// Clustering algorithms
+// Convert cylinder coordinates to those on an unfolded plane
 void CylinderToSquare(double square[2], int tubeID, double charge, WCSimRootGeom *geo, double radius, double height){
 
   // Find out where the PMT is in the tank
@@ -183,6 +186,7 @@ void CylinderToSquare(double square[2], int tubeID, double charge, WCSimRootGeom
   }
 
 }
+// Convert the coordinates from a 2D unfolded plane back into a cylinder
 void SquareToCylinder(double square[2], double cylinder[3], double radius, double height){
 
   // Find out where the PMT is in the tank
@@ -218,7 +222,8 @@ int FindBin(int numBins, double low, double high, double val){
     double binNum = (val - low)/step;
     return (int) binNum;
 }
-
+// Returns an array which contains the 8 neighbours of any grid point in xbin,ybin coordinates
+// e.g a[0]is the top right neighbour from the point
 void GetNeighbours(int a[8][2], int i, int j){
 
   a[0][0] = i+1; a[0][1] =  j+1;
@@ -232,32 +237,32 @@ void GetNeighbours(int a[8][2], int i, int j){
   a[7][0] = i-1; a[7][1] = j;
 
 }
-
+// A function to find all of the peaks in the grid, this function looks for all of a point's neighbours to have a lower charge for the point to be considered a peak.
 std::vector<section> FindPeaks(double array[GridXBin][GridYBin], double radius, double height){
 
-  std::vector<section> peaks;
+  std::vector<section> peaks; // first create a vector of section objects
 
   for (int i = 0; i < GridXBin; i++){
     for (int j = 0; j < GridYBin; j++){
-      int larger = 0;
-      double totcharge = array[i][j];
+      int larger = 0; // counter to store how many neighbours are lower than the point
+      double totcharge = array[i][j]; // initialise charge counter with the charge of the point
       int neighbours[8][2];
-      GetNeighbours( neighbours, i, j );
-      for (int n = 0; n < 8; n++){
+      GetNeighbours( neighbours, i, j ); 
+      for (int n = 0; n < 8; n++){ // loop through all of the neighbouring sections
 
         if ( neighbours[n][0] < 0
             || neighbours[n][1] < 0
             || neighbours[n][0] > GridXBin -1
             || neighbours[n][1] > GridYBin -1
           ) continue;
-          double val = array[ neighbours[n][0] ][ neighbours[n][1] ];
-        if (val < array[i][j]) {
+          double val = array[ neighbours[n][0] ][ neighbours[n][1] ]; // find the charge of the neighbouring section
+        if (val < array[i][j]) { // if the charge is lower then add it to our point and increase the counter
           totcharge += val;
           larger++;
         }
 
       } // end of loop over n
-      if (larger == 8){
+      if (larger == 8){ // if all of the neighbours have a lower charge than our point, then we add a peak
         section a;
         a.xbin = i;
         a.ybin = j;
