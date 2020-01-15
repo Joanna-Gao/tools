@@ -10,17 +10,17 @@
 #include <TTree.h>
 
 
-//WCIDDiameter = 70.8*m; // = 74m - 2*(60cm ID wall + 1m OD)
-//WCIDHeight = 54.8*m; // = 60m - 2*(60cm ID wall + 2m OD)
+//WCIDDiameter = 65.8*m; // = 69m - 2*(60cm ID wall + 1m OD)
+//WCIDHeight   = 67.8*m; // = 73m - 2*(60cm ID wall + 2m OD)
 #define nParticles 1000
 
 #define PI 3.141592654
 #define SEED 12345
 
-#define IDRadius 3540 // in cm
-#define IDHalfHeight  2740 // in cm
-#define ODRadius 3700 // in cm
-#define ODHalfHeight 3000 //in cm
+#define IDRadius 3290 // in cm
+#define IDHalfHeight  3390 // in cm
+#define ODRadius 3450 // in cm
+#define ODHalfHeight 3650 //in cm
 #define Deadspace 600 // in cm
 #define LargeCircleRadius 5000 // in cm
 #define LargeCircleOffset 200 // in cm
