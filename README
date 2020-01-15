@@ -1,0 +1,24 @@
+CreateVectors:
+
+	This script creates vector files for different types of events.
+	Run it using the command 
+		root -l CreateVectors.C
+
+	The output will be files named VectorFileFC.dat for FC events etc.
+
+Vector.mac
+
+	This is an example mac file on how to use the vector files to simulate events.
+
+llib.C:
+
+	This file is used to load the libraries required to read WCSim outputs.
+
+ODAnalysis.C
+
+	This script runs a clustering algorithm on a WCSim output event. 
+	Run it using the command
+		root -l llib.C 'ODAnalysis.C("WCSim.root","outputFile.root",false)'
+
+	This script is a work in progress, currently has some hard-coded values which will need to be changed to be more general.
+	Also needs tuning.
