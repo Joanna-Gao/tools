@@ -23,10 +23,10 @@
 
 //Definitions
 #define PI 3.141592654
-#define RadiusID 3.55e+03
-#define HeightID 5.50e+03
-#define RadiusOD 3.60e+03
-#define HeightOD 5.60e+03
+#define GridX 20350
+#define GridY 10000
+#define GridXBin 40
+#define GridYBin 20
 /*
 *How to run:
 *
@@ -109,6 +109,12 @@ double GetDistance(int pmt_ID1, int pmt_ID2, WCSimRootGeom *geo){
   }
 
   return distance;
+}
+bool checkPMT(int pmt, int low, int high) {
+
+	if (pmt >= low && pmt <= high) return true;
+	else return false;
+
 }
 // finds angles using dot product
 double Angles(double a[2], double b[2]){
@@ -227,12 +233,12 @@ void GetNeighbours(int a[8][2], int i, int j){
 
 }
 
-std::vector<section> FindPeaks(double array[40][20]){
+std::vector<section> FindPeaks(double array[GridXBin][GridYBin], double radius, double height){
 
   std::vector<section> peaks;
 
-  for (int i = 0; i < 40; i++){
-    for (int j = 0; j < 20; j++){
+  for (int i = 0; i < GridXBin; i++){
+    for (int j = 0; j < GridYBin; j++){
       int larger = 0;
       double totcharge = array[i][j];
       int neighbours[8][2];
@@ -241,8 +247,8 @@ std::vector<section> FindPeaks(double array[40][20]){
 
         if ( neighbours[n][0] < 0
             || neighbours[n][1] < 0
-            || neighbours[n][0] > 39
-            || neighbours[n][1] > 19
+            || neighbours[n][0] > GridXBin -1
+            || neighbours[n][1] > GridYBin -1
           ) continue;
           double val = array[ neighbours[n][0] ][ neighbours[n][1] ];
         if (val < array[i][j]) {
@@ -276,14 +282,14 @@ std::vector<section> FindPeaks(double array[40][20]){
       //std::cout << "Mr hello: " << i << " "<< j <<  std::endl;
       double Val1[2]; double Val2[2];
 
-      Val1[0] = -20350 + ( ((double)peaks[i].xbin + 0.5))*2*20350/40;
-      Val2[0] = -20350 + ( ((double)peaks[i+1].xbin + 0.5))*2*20350/40;
-      Val1[1] = -10000 + ( ((double)peaks[i].ybin + 0.5))*2*20350/40;
-      Val2[1] = -10000 + ( ((double)peaks[i+1].ybin + 0.5))*2*20350/40;
+      Val1[0] = -GridX + ( ((double)peaks[i].xbin + 0.5))*2*GridX/GridXBin;
+      Val2[0] = -GridX + ( ((double)peaks[i+1].xbin + 0.5))*2*GridX/GridXBin;
+      Val1[1] = -GridY + ( ((double)peaks[i].ybin + 0.5))*2*GridX/GridYBin;
+      Val2[1] = -GridY + ( ((double)peaks[i+1].ybin + 0.5))*2*GridX/GridYBin;
       double cluster1[3];
       double cluster2[3];
-      SquareToCylinder(Val1, cluster1, RadiusOD, HeightOD);
-      SquareToCylinder(Val2, cluster2, RadiusOD, HeightOD);
+      SquareToCylinder(Val1, cluster1, radius, height);
+      SquareToCylinder(Val2, cluster2, radius, height);
 
       double difflength = sqrt( pow( (cluster2[0] - cluster1[0]  ) ,2 )  + pow( (cluster2[1] - cluster1[1]  ) ,2 ) + pow( (cluster2[2] - cluster1[2]  ) ,2 )  );
 
@@ -309,9 +315,6 @@ std::vector<section> FindPeaks(double array[40][20]){
     }
 
   }
-
-
-
 
   return peaks;
 
@@ -408,6 +411,78 @@ void ODAnalysis( const char *inFileName = "wcsim.root", const char *outFileName 
 	int MAXPMT = geo->GetWCNumPMT(); //Get the maximum number of PMTs in the ID
 	int MAXPMTA = geo->GetODWCNumPMT(); //Get the maximum number of PMTs in the OD
 
+	bool idOn = true; // Boolean to keep track of whether or not the ID was constructed (sometimes turned off for speed) true = on , false = off
+	bool odOn = true; // Boolean to keep track of whether or not the ID was constructed (sometimes turned off for speed) true = on , false = off
+	if (MAXPMT == 0 ) {idOn = false;}
+	if (MAXPMTA == 0 ) {odOn = false;}
+
+	double RadiusID = 0;
+	double RadiusOD = 0;
+	double HeightID = 0;
+	double HeightOD = 0;
+
+	// Find a barrel pmt
+	bool barrelID = false; // Boolean to see if a barrel ID pmt has been found
+	bool barrelOD = false;  // Boolean to see if a barrel OD pmt has been found
+	bool capID = false;  // Boolean to see if a cap ID pmt has been found
+	bool capOD = false;  // Boolean to see if a cap OD pmt has been found
+	int barrelPMTID = -1; // PMT number of the barrel ID PMT
+	int barrelPMTOD = -1; // PMT number of the barrel OD PMT
+	int capPMTID = -1; // PMT number of the cap ID PMT
+	int capPMTOD = -1; // PMT number of the cap OD PMT
+	int pmtCount = 0; // Number used to count through all of the PMTs
+
+	if (!idOn) {barrelID = true; capID = true;} // If no ID constructed, don't look for ID PMTs
+	if (!odOn) {barrelOD = true; capOD = true;} // If no OD constructed, don't look for OD PMTs
+
+	while (!barrelID || !barrelOD || !capID || !capOD ){ // Loop to look for barrel and cap PMTs to work out the radius and height respectively.
+
+		//std::cout <<"Looking for barrel ID PMT: " << geo->GetPMT(pmtCount).GetCylLoc()<<std::endl;
+		if ( !barrelID && ( geo->GetPMT(pmtCount).GetCylLoc() == 1)  ) {barrelID = true; barrelPMTID = pmtCount; }
+		if ( !barrelOD && (geo->GetPMT(pmtCount).GetCylLoc() == 4 )  ) {barrelOD = true; barrelPMTOD = pmtCount; }
+		if ( !capID && (geo->GetPMT(pmtCount).GetCylLoc() == 0 || geo->GetPMT(pmtCount).GetCylLoc() == 2)  ) {capID = true; capPMTID = pmtCount; }
+		if ( !capOD && (geo->GetPMT(pmtCount).GetCylLoc() == 3 || geo->GetPMT(pmtCount).GetCylLoc() == 5)  ) {capOD = true; capPMTOD = pmtCount; }
+		pmtCount++;
+		//pmtCount+= 10; // Can speed up this process by checking PMTs in multiples higher than 1
+	}
+
+
+	if (idOn) { // If ID is on, check the PMTs are correct and set the height and radius.
+		if (checkPMT(barrelPMTID, 0, MAXPMT -1 ) && checkPMT(capPMTID, 0, MAXPMT -1) ) {
+			// Set the radius and height of the ID using the PMTs' positions.
+			RadiusID = sqrt( pow( geo->GetPMT(barrelPMTID).GetPosition(0),2) + pow(geo->GetPMT(barrelPMTID).GetPosition(1),2) );
+			HeightID = 2*(abs(geo->GetPMT(capPMTID).GetPosition(2)));
+
+		}
+		else {
+			std::cerr << "Can not understand the tank geometry. Exiting..." << std::endl;
+			exit(1);
+		}
+	}
+
+	if (odOn) { // If OD is on, check the PMTs are correct and set the height and radius.
+		if (checkPMT(barrelPMTOD, MAXPMT, MAXPMT + MAXPMTA-1) && checkPMT(capPMTOD, MAXPMT, MAXPMT + MAXPMTA - 1) ) {
+			// Set the radius and height of the ID and OD using the PMTs' positions.
+			RadiusOD = sqrt( pow( geo->GetPMT(barrelPMTOD).GetPosition(0),2) + pow(geo->GetPMT(barrelPMTOD).GetPosition(1),2) );
+			HeightOD = 2*(abs(geo->GetPMT(capPMTOD).GetPosition(2)));
+
+		}
+		else {
+			std::cerr << "Can not understand the tank geometry. Exiting..." << std::endl;
+			exit(1);
+		}
+	}
+
+
+	if (idOn) {
+		std::cout << "Barrel Radius (ID) is: " << RadiusID <<std::endl;
+		std::cout << "Barrel Height (ID) " <<  HeightID <<std::endl;
+	}
+	if (odOn) {
+		std::cout << "Barrel Radius (OD) is: " << RadiusOD <<std::endl;
+		std::cout << "Barrel Height (OD) " <<  HeightOD <<std::endl;
+	}
+
 
 	// OD Event Analysis
   for (int ev = 0; ev < nEvent; ev++){ // Loop over events
@@ -419,15 +494,13 @@ void ODAnalysis( const char *inFileName = "wcsim.root", const char *outFileName 
 
 	  for (int nTrig = 0; nTrig < numTriggers; nTrig++){
 
-
-
 	    wcsimTriggerOD = wcsimRoot->GetTrigger(nTrig);
 	    int numTracks = wcsimTriggerOD->GetNtrack();
 
 	    if ( numTracks != 0){
         WCSimRootTrack * trackOD = (WCSimRootTrack*) wcsimTriggerOD->GetTracks()->At(0);
 
-        double tankArray[40][20] = {}; // split tank into 40 by 20
+        double tankArray[GridXBin][GridYBin] = {}; // split tank into GridXBin by GridYBin
 
 	      double vtxX = wcsimTriggerOD->GetVtx(0);
 	      double vtxY = wcsimTriggerOD->GetVtx(1);
@@ -465,12 +538,12 @@ void ODAnalysis( const char *inFileName = "wcsim.root", const char *outFileName 
           double square[2] = {};
           double cylinder[3] = {};
           CylinderToSquare(square, ODtubeID, tmpDigiHits, geo, RadiusOD, HeightOD);
-          tankArray[FindBin(40, -20350, 20350, square[0])][FindBin(20, -10000, 10000, square[1])] += tmpDigiHits;
+          tankArray[FindBin(GridXBin, -GridX, GridX, square[0])][FindBin(GridYBin, -GridY, GridY, square[1])] += tmpDigiHits;
 
     		} // End of loop over digi hits
 
 
-        std::vector<section> peaks = FindPeaks(tankArray);
+        std::vector<section> peaks = FindPeaks(tankArray, RadiusOD, HeightOD);
         if (verbosity) {std::cout << "Number of Peaks found: " << peaks.size() << std::endl;}
         clusterHist->Fill(peaks.size());
 
