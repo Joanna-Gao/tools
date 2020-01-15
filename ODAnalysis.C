@@ -174,7 +174,6 @@ void CylinderToSquare(double square[2], int tubeID, double charge, WCSimRootGeom
           if (tube[0]<0) length *= -1;
           square[0] = length;
           square[1] = tube[2];
-;
   }
 
 }
@@ -230,7 +229,7 @@ void GetNeighbours(int a[8][2], int i, int j){
 
 std::vector<section> FindPeaks(double array[40][20]){
 
-std::vector<section> peaks;
+  std::vector<section> peaks;
 
   for (int i = 0; i < 40; i++){
     for (int j = 0; j < 20; j++){
@@ -463,14 +462,10 @@ void ODAnalysis( const char *inFileName = "wcsim.root", const char *outFileName 
           tube[1] = geo->GetPMT(ODtubeID).GetPosition(1);
           tube[2] = geo->GetPMT(ODtubeID).GetPosition(2);
 
-          // testing
-          //CylinderToSquare(square[2], tubeID, charge, geo, radius, height);
-          //SquareToCylinder(square[2], Cylinder[3], radius, height);
           double square[2] = {};
           double cylinder[3] = {};
           CylinderToSquare(square, ODtubeID, tmpDigiHits, geo, RadiusOD, HeightOD);
           tankArray[FindBin(40, -20350, 20350, square[0])][FindBin(20, -10000, 10000, square[1])] += tmpDigiHits;
-          //SquareToCylinder(square, cylinder, RadiusOD, HeightOD);
 
     		} // End of loop over digi hits
 
@@ -478,11 +473,6 @@ void ODAnalysis( const char *inFileName = "wcsim.root", const char *outFileName 
         std::vector<section> peaks = FindPeaks(tankArray);
         if (verbosity) {std::cout << "Number of Peaks found: " << peaks.size() << std::endl;}
         clusterHist->Fill(peaks.size());
-        /*
-        for (int chkpk = 0; chkpk < peaks.size(); chkpk++ ){
-          std::cout << "Peak " << chkpk << " : " << peaks[chkpk].x << ", " << peaks[chkpk].y << ", " << peaks[chkpk].z << ", " << peaks[chkpk].totCharge << std::endl;
-        }
-        */
 
 	    }
 
