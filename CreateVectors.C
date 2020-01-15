@@ -12,6 +12,7 @@
 
 //WCIDDiameter = 70.8*m; // = 74m - 2*(60cm ID wall + 1m OD)
 //WCIDHeight = 54.8*m; // = 60m - 2*(60cm ID wall + 2m OD)
+#define nParticles 1000
 
 #define PI 3.141592654
 #define SEED 12345
@@ -31,40 +32,21 @@
 #define muRadiativeLoss 2.3 // 2MeV/cm loss for muon (in MeV) 0.3 MeV per cm Cerenkov loss
 
 
-
+// Enumerator for the various event types
 enum EventType {fc, pc, upmus, upmut, cosmic};
 
 std::default_random_engine generator(SEED);
-/*
-// generates a point within the fiducial cut from ID barrel walls^2
-std::uniform_real_distribution<double> distributionPosRIDFiducial(0,pow(IDRadius-FiducialCut,2));
-// generates a point within the ID radius^2
-std::uniform_real_distribution<double> distributionPosRID(0,pow(IDRadius,2));
-// generates a point within the fiducial cut from ID endcaps
-std::uniform_real_distribution<double> distributionPosZIDFiducial(-(IDHalfHeight-FiducialCut), (IDHalfHeight-FiducialCut) );
-// generates a point within the ID height
-std::uniform_real_distribution<double> distributionPosZID(-IDHalfHeight , IDHalfHeight );
-// generates an angle from 0 to 2*pi
-std::uniform_real_distribution<double>distributionTheta(0.0,2*PI);
-// generates a point within the OD barrel walls^2
-std::uniform_real_distribution<double> distributionPosROD(pow(IDRadius+Deadspace,2),pow(ODRadius,2));
-// generates a point on a large circle (for cosmics and upmu)
-std::uniform_real_distribution<double> distributionPosRLarge(0,pow(LargeCircleRadius,2));
-// generates a random number for probabilities
-std::uniform_real_distribution<double> distributionProbability(0,1);
 
-// generates energy for FC and stopping muon events
-std::uniform_real_distribution<double> lessEnergy(0.01, muRadiativeLoss-0.1);
-// generates energy for PC and through-going muon and cosmic events
-std::uniform_real_distribution<double> moreEnergy(muRadiativeLoss+0.1, muRadiativeLoss+3);
-*/
+// This function generates a random double between a and b. (uniform distribution)
 double Random(double a, double b){
 	std::uniform_real_distribution<double> quick(a,b);
 	return quick(generator);
 }
+// This function generates an energy/cm lower than that required to traverse the distance
 double LessEnergy(){
 	return Random(0.01, muRadiativeLoss-0.1);
 }
+// This function generates an energy/cm higher than that required to traverse the distance
 double MoreEnergy(){
 	return Random(muRadiativeLoss+0.1, muRadiativeLoss+3);
 }
@@ -79,7 +61,7 @@ void GeneratePointInCylinder(double rad, double height, double Pos[3]){
 }
 // function to generate a point on the surface of a cylinder. height is the half height, pos is the output vertex
 void GeneratePointOnCylinder(double rad, double height, double Pos[3]){
-	// generate point b on the edge of the ID
+	// First work out the area of the cylinder caps and barrel
 	double areaCap = PI*rad*rad;
 	double areaBarrel = height*PI*4*rad;
 	double totalArea = areaBarrel + 2*areaCap;
@@ -144,15 +126,9 @@ void GenerateVertex(EventType ev, double aPos[3], double dir[3], double &energy 
 
 	// The idea is to select two point and draw a line between them in order to generate a specific kind of event. e.g. pick a point above and below the detector to generate a cosmic muon.
 
-	//aPos[3]; // coordinates of first point
+	
 	double bPos[3]; // coordinates of second point
-	//dir[3]; // normalised direction between two points
 	double length; // distance between two points
-
-	//double genThetaA = distributionTheta(generator);
-	//double genThetaB = distributionTheta(generator);
-
-	//double genR;
 
 	if (ev == fc || ev == pc){
 		// generate point a inside the fiducial volume
@@ -165,10 +141,10 @@ void GenerateVertex(EventType ev, double aPos[3], double dir[3], double &energy 
 		length = GetL(aPos, bPos, dir); // dir now filled
 
 		if (ev == fc){
-			energy = muEnergyCerenkovThreshold + length*LessEnergy();
+			energy = muEnergyCerenkovThreshold + length*LessEnergy(); // not enough energy to leave
 		}
 		else if (ev == pc){
-			energy = muEnergyCerenkovThreshold + length*MoreEnergy();
+			energy = muEnergyCerenkovThreshold + length*MoreEnergy(); // more than enough energy to leave
 		}
 
 	}
@@ -185,10 +161,10 @@ void GenerateVertex(EventType ev, double aPos[3], double dir[3], double &energy 
 		length = GetL(aPos, bPos, dir); // dir now filled
 
 		if (ev == upmus){
-			energy = muEnergyCerenkovThreshold + length*LessEnergy();
+			energy = muEnergyCerenkovThreshold + length*LessEnergy(); // not enough energy to leave
 		}
 		else if (ev == upmut){
-			energy = muEnergyCerenkovThreshold + length*MoreEnergy();
+			energy = muEnergyCerenkovThreshold + length*MoreEnergy(); // more than enough energy to leave
 		}
 
 	}
@@ -221,9 +197,6 @@ void CreateVector(EventType ev = fc)
 	int particlePDG = 13; // mu-
 	//int particlePDG = -13; // mu+
 	//int particlePDG = 22; // gamma
-
-	int nParticles = 100;
-
 
 	std::string outputFileName = GetOutFileName(ev);
 
@@ -269,15 +242,13 @@ void CreateVector(EventType ev = fc)
 	//Ends the creation of the particle
 		outputFile << "$ end" << std::endl;
 
-	//Output the number of particles processed, for every multiple of 1000
-		if (i % 1000 == 0)
-			{
-			std::cout << "Number of particles in data file: " << i << std::endl;
-			}
+	
+
 
 
 		}
 
+	std::cout << "Number of particles in data file: " << nParticles << std::endl;
 	//Close the output file
 	outputFile.close();
 	std::cout << "Finished." << std::endl;
