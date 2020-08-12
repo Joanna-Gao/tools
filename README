@@ -1,10 +1,11 @@
-CreateVectors:
+Vector/
 
-	This script creates vector files for different types of events.
-	Run it using the command 
-		root -l CreateVectors.C
+	This folder contains script that creates vector files for different types of events.
+	To run it, go to Vertex-build and use command 
+		./CreateVectors
 
 	The output will be files named VectorFileFC.dat for FC events etc.
+	To change the type of event, go into the file and edit main() at the very end.
 
 Vector.mac
 
