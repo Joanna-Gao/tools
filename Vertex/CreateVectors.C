@@ -16,6 +16,7 @@
 #include <fstream>
 #include <random>
 #include <cmath>
+#include <string>
 
 //Include ROOT
 #include <TFile.h>
@@ -44,8 +45,9 @@
 #define muMass 105.6583745// mu- mass (in MeV)
 #define muEnergyCerenkovThreshold 159.7404473 //minimum energy to produce Cerenkov radiation (including mass)
 #define muRadiativeLoss 2.3 // 2MeV/cm loss for muon (in MeV) 0.3 MeV per cm Cerenkov loss
-#define FixedKE 1e6 // 10**6 MeV kinetic energy
-
+//#define FixedKE 1e6 // 10**6 MeV kinetic energy
+//#define FixedKE 1e5 // 100 GeV kinetic energy
+#define FixedKE 1e3 
 
 // Enumerator for the various event types
 enum EventType {fc, pc, upmus, upmut, cosmic, randomloc};
@@ -131,7 +133,8 @@ std::string GetOutFileName(EventType ev)
 		       << std::endl; exit(1);
   }
   
-  std::string out = "VectorFile" + evTypeName + ".dat";
+  std::string out = "VectorFile" + evTypeName + std::to_string(int(FixedKE/1000)) + "GeV"
+		    + std::to_string(int(nParticles)) + "Evnts.dat";
   return out;
 }
 
@@ -246,7 +249,7 @@ void CreateVector(EventType ev = fc)
   //int particlePDG = 22; // gamma
   
   std::string outputFileName = GetOutFileName(ev);
-  
+   
   //Variables used to store the infomation for the output
   double energyVal;
   double dirVal[3];

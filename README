@@ -1,6 +1,10 @@
-Vector/
+tools/
 
-	This folder contains script that creates vector files for different types of events.
+	This file contains tool scripts used before or after the running simulation. 
+
+
+	For creating randomised vertices of muons on the tank cavern or other places, go to Vertex/
+	The folder contains script that creates vector files for different types of events.
 	To run it, go to Vertex-build and use command 
 		./CreateVectors
 
