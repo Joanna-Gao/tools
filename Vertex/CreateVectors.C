@@ -46,8 +46,8 @@
 #define muEnergyCerenkovThreshold 159.7404473 //minimum energy to produce Cerenkov radiation (including mass)
 #define muRadiativeLoss 2.3 // 2MeV/cm loss for muon (in MeV) 0.3 MeV per cm Cerenkov loss
 //#define FixedKE 1e6 // 10**6 MeV kinetic energy
-//#define FixedKE 1e5 // 100 GeV kinetic energy
-#define FixedKE 1e3 
+#define FixedKE 2e6 // 2000 GeV kinetic energy
+//#define FixedKE 1e3 
 
 // Enumerator for the various event types
 enum EventType {fc, pc, upmus, upmut, cosmic, randomloc};

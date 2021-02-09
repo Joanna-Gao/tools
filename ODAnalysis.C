@@ -421,16 +421,33 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
 
 	// Create an output file
 	TFile *outFile = new TFile(outFileName, "RECREATE");
-	TTree *outTree = new TTree("simulation", "simulation");
+	TTree *IDTree = new TTree("IDTree", "ID info");
+  TTree *ODTree = new TTree("ODTree", "OD info");
 
   // Create branches for the tree
   int ev; // Event number
-  std::vector<float> trueTimeID; // For storing true time info of ID hits
-  std::vector<float> parentParticleID; // For storing parent particle of the pe
+  // Branch for ID info
+  std::vector<float>  trueTimeID; // For storing true time info of ID hits
+  std::vector<float>  parentParticleID; // For storing parent particle of the pe
+  std::vector<int>    IDtubeID;
+  std::vector<double> digiHitTID;
+  std::vector<double> digiHitQID;
+  // Branch for OD info
+  std::vector<int>    ODtubeID;
+  std::vector<double> digiHitTOD;
+  std::vector<double> digiHitQOD;
 
-  outTree->Branch("EvtNum", &ev, "ev/I");
-  outTree->Branch("IDtrueTime", &trueTimeID);
-  outTree->Branch("IDparentID", &parentParticleID);
+  IDTree->Branch("EvtNum", &ev, "ev/I");
+  IDTree->Branch("IDtrueTime", &trueTimeID);
+  IDTree->Branch("IDparentID", &parentParticleID);
+  IDTree->Branch("tubeID", &IDtubeID);
+  IDTree->Branch("digiHitT", &digiHitTID);
+  IDTree->Branch("digiHitQ", &digiHitQID);
+
+  ODTree->Branch("EvtNum", &ev, "ev/I");
+  ODTree->Branch("tubeID", &ODtubeID);
+  ODTree->Branch("digiHitT", &digiHitTOD);
+  ODTree->Branch("digiHitQ", &digiHitQOD);
 
   // ========== Histo definitions ===========
 	TH1D *clusterHistOD = new TH1D("clusterHistOD", "clusterHistOD", 21, 0, 20);
@@ -443,6 +460,7 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
   TH1D *digiHitTHistoID = new TH1D("digiHitTHistoID", "ID Digitised Hit Time", 100, 0, 4000);
   TH1D *digiHitQHistoID = new TH1D("digiHitQHistoID", "ID Digitised Hit Charge", 100, 0, 10);
   TH2D *digiQvsTHistoID = new TH2D("digiQvsTHistoID", "ID Digitised Q vs T", 100, 0, 4000, 100, 0, 100);
+  TH2D *digiQvsTHistoOD = new TH2D("digiQvsTHistoOD", "OD Digitised Q vs T", 100, 0, 4000, 100, 0, 100);
   // ========================================
 
 	// Detector Geometry Details
@@ -527,6 +545,12 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
 	  wcsimTree->GetEntry(ev);
     trueTimeID.clear();
     parentParticleID.clear();
+    IDtubeID.clear();
+    digiHitTID.clear();
+    digiHitQID.clear();
+    ODtubeID.clear();
+    digiHitTOD.clear();
+    digiHitQOD.clear();
 
     // ID related
     wcsimTriggerID =  wcsimRootID->GetTrigger(0);
@@ -549,16 +573,6 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
       int numTracks = wcsimTriggerID->GetNtrack();
       TClonesArray *timeArray = wcsimTriggerID->GetCherenkovHitTimes();
 
-      // loop through tracks to get parent particle ID
-      // no GetTrack() method in wcsimTriggerID()
-      //for (int itrack = 0; itrack < numTracks; ++itrack)
-      //{
-      //  WCSimRootTrack *aTrackID = 
-      //    (WCSimRootTrack*)wcsimTriggerID->GetTracks()->At(itrack);
-      //  int parentID = aTrackID->GetDefinition()->GetPDGEncoding();
-      //  parentParticleID.push_back(parentID);
-      //}
-      
       int numPMTsHitID = wcsimTriggerID->GetNcherenkovhits();
       int numPMTsDigiHitID = wcsimTriggerID->GetNcherenkovdigihits();
       double totalQID = wcsimTriggerID->GetSumQ();
@@ -584,7 +598,7 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
             dynamic_cast<WCSimRootCherenkovHitTime*>(timeArray->At(iPE));
           
           trueTimeID.push_back(aHitTimeID->GetTruetime());
-          //parentParticleID.push_back(aHitTimeID->GetParentID());
+          parentParticleID.push_back(aHitTimeID->GetParentID());
           hitTHistoID->Fill(aHitTimeID->GetTruetime());
         } // end of pe loop for one hit
       } // end of true hit loop for one trigger
@@ -594,6 +608,11 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
       {
         WCSimRootCherenkovDigiHit *aDigiHit =
             (WCSimRootCherenkovDigiHit*)wcsimTriggerID->GetCherenkovDigiHits()->At(idigiHit);
+        // Store info in tree
+        IDtubeID.push_back(aDigiHit->GetTubeId());
+        digiHitTID.push_back(aDigiHit->GetT());
+        digiHitQID.push_back(aDigiHit->GetQ());
+
         digiHitTHistoID->Fill(aDigiHit->GetT());
         digiHitQHistoID->Fill(aDigiHit->GetQ());
         digiQvsTHistoID->Fill(aDigiHit->GetT(), aDigiHit->GetQ());
@@ -605,6 +624,13 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
     {
 	  	wcsimTriggerOD = wcsimRootOD->GetTrigger(nTrigOD);
 	  	int numTracks = wcsimTriggerOD->GetNtrack();
+
+      for (int i = 0; i < wcsimTriggerOD->GetNcherenkovdigihits(); i++)
+      {
+  		  WCSimRootCherenkovDigiHit *cherenkovDigiHit = 
+          (WCSimRootCherenkovDigiHit*) wcsimTriggerOD->GetCherenkovDigiHits()->At(i);
+        digiQvsTHistoOD->Fill(cherenkovDigiHit->GetT(),cherenkovDigiHit->GetQ());
+      }
 
 	    if ( numTracks != 0)
       {
@@ -640,23 +666,27 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
         digiHitHistoOD->Fill(numPMTsDigiHitOD);
         totalQ += totalQOD;
 
-    		for (int i = 0; i < numPMTsDigiHitOD; i++){
-
+    		for (int i = 0; i < numPMTsDigiHitOD; i++)
+        {
     		  WCSimRootCherenkovDigiHit *cherenkovDigiHit = 
               (WCSimRootCherenkovDigiHit*) wcsimTriggerOD->GetCherenkovDigiHits()->At(i);
     		  double tmpDigiHits = cherenkovDigiHit->GetQ();
           int tubeID = cherenkovDigiHit->GetTubeId();
-          int ODtubeID = tubeID + MAXPMT - 1;
+          int ODtubeID_ = tubeID + MAXPMT - 1;
+
+          ODtubeID.push_back(ODtubeID_);
+          digiHitTOD.push_back(cherenkovDigiHit->GetT());
+          digiHitQOD.push_back(tmpDigiHits);
 
           double tube[3];
-          int cylLoc = geo->GetPMT(ODtubeID).GetCylLoc();
-          tube[0] = geo->GetPMT(ODtubeID).GetPosition(0);
-          tube[1] = geo->GetPMT(ODtubeID).GetPosition(1);
-          tube[2] = geo->GetPMT(ODtubeID).GetPosition(2);
+          int cylLoc = geo->GetPMT(ODtubeID_).GetCylLoc();
+          tube[0] = geo->GetPMT(ODtubeID_).GetPosition(0);
+          tube[1] = geo->GetPMT(ODtubeID_).GetPosition(1);
+          tube[2] = geo->GetPMT(ODtubeID_).GetPosition(2);
 
           double square[2] = {};
           double cylinder[3] = {};
-          CylinderToSquare(square, ODtubeID, tmpDigiHits, geo, RadiusOD, HeightOD);
+          CylinderToSquare(square, ODtubeID_, tmpDigiHits, geo, RadiusOD, HeightOD);
           tankArray[FindBin(GridXBin, -GridX, GridX, square[0])][FindBin(GridYBin, -GridY, GridY, square[1])] += tmpDigiHits;
     		} // End of loop over digi hits
 
@@ -669,7 +699,8 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
 
     digiHitHisto->Fill(totalDigiHit);
     sumQHisto->Fill(totalQ);
-    outTree->Fill();
+    IDTree->Fill();
+    ODTree->Fill();
 	} // end of event loop
 
 
@@ -688,7 +719,8 @@ void ODAnalysis( const char *inFileName = "wcsim.root",
   digiHitTHistoID->Write();
   digiHitQHistoID->Write();
   digiQvsTHistoID->Write();
-	outTree->Write(); // Write tree to the output file.
+  digiQvsTHistoOD->Write();
+	IDTree->Write(); // Write tree to the output file.
+  ODTree->Write();
 	outFile->Close(); // Close the output file.
-
 }
